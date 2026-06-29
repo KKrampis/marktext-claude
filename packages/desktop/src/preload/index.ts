@@ -226,6 +226,30 @@ const fontsAPI = {
   list: () => invoke('mt::fonts::list')
 }
 
+type ClaudeOutputHandler = (terminalId: string, data: string) => void
+type ClaudeExitHandler = (terminalId: string, code: number) => void
+
+const claudeAPI = {
+  explain: (selectedText: string, docContent: string) =>
+    invoke('mt::claude::explain', selectedText, docContent),
+  startTerminal: (terminalId: string) =>
+    invoke('mt::claude::terminal-start', terminalId),
+  sendInput: (terminalId: string, data: string) =>
+    send('mt::claude::terminal-input', terminalId, data),
+  killTerminal: (terminalId: string) =>
+    send('mt::claude::terminal-kill', terminalId),
+  onOutput: (handler: ClaudeOutputHandler) => {
+    const sub = (_e: IpcRendererEvent, terminalId: string, data: string) => handler(terminalId, data)
+    ipcRenderer.on('mt::claude::terminal-output', sub)
+    return () => ipcRenderer.removeListener('mt::claude::terminal-output', sub)
+  },
+  onExit: (handler: ClaudeExitHandler) => {
+    const sub = (_e: IpcRendererEvent, terminalId: string, code: number) => handler(terminalId, code)
+    ipcRenderer.on('mt::claude::terminal-exit', sub)
+    return () => ipcRenderer.removeListener('mt::claude::terminal-exit', sub)
+  }
+}
+
 const electronAPI = {
   ipcRenderer: ipcWrapper,
   shell: shellAPI,
@@ -294,6 +318,7 @@ try {
   contextBridge.exposeInMainWorld('ripgrep', ripgrepAPI)
   contextBridge.exposeInMainWorld('uploader', uploaderAPI)
   contextBridge.exposeInMainWorld('fonts', fontsAPI)
+  contextBridge.exposeInMainWorld('claude', claudeAPI)
 } catch (error) {
   console.error(error)
 }

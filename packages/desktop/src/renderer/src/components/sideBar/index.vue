@@ -135,6 +135,8 @@ const handleLeftIconClick = (name: string): void => {
 const handleLeftBottomClick = (name: string): void => {
   if (name === 'settings') {
     projectStore.OPEN_SETTING_WINDOW()
+  } else if (name === 'claude') {
+    layoutStore.TOGGLE_CLAUDE_PANEL()
   }
 }
 </script>

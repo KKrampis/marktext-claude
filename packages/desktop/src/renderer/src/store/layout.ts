@@ -50,6 +50,7 @@ export const useLayoutStore = defineStore('layout', () => {
   const showSideBar = ref(false)
   const showTabBar = ref(false)
   const sideBarWidth = ref<number>(initialSideBarWidth)
+  const showClaudePanel = ref(false)
 
   // Actual rendered sidebar width. `sideBarWidth` is the right-column width
   // (clamped to ≥220 by `normalizeSideBarWidth`); when `rightColumn` is empty
@@ -183,11 +184,16 @@ export const useLayoutStore = defineStore('layout', () => {
     SET_SIDE_BAR_WIDTH(width)
   }
 
+  function TOGGLE_CLAUDE_PANEL(): void {
+    showClaudePanel.value = !showClaudePanel.value
+  }
+
   return {
     rightColumn,
     showSideBar,
     showTabBar,
     sideBarWidth,
+    showClaudePanel,
     effectiveSideBarWidth,
     SET_LAYOUT,
     CREATE_BUFFERED_STATE,
@@ -196,6 +202,7 @@ export const useLayoutStore = defineStore('layout', () => {
     SET_SIDE_BAR_WIDTH,
     LISTEN_FOR_LAYOUT,
     DISPATCH_LAYOUT_MENU_ITEMS,
-    CHANGE_SIDE_BAR_WIDTH
+    CHANGE_SIDE_BAR_WIDTH,
+    TOGGLE_CLAUDE_PANEL
   }
 })

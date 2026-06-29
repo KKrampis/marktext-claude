@@ -83,6 +83,9 @@ export interface IpcInvokeChannels {
   // Main derives the BrowserWindow via BrowserWindow.fromWebContents(e.sender);
   // no need to pass windowId. Payload is the editor+project+layout snapshot.
   'update-buffer-state': { args: [payload: unknown]; ret: void }
+  // Claude Code integration
+  'mt::claude::explain': { args: [selectedText: string, docContent: string]; ret: string }
+  'mt::claude::terminal-start': { args: [terminalId: string]; ret: void }
 }
 
 // =================================================================
@@ -198,6 +201,9 @@ export interface IpcSendChannels {
   'window-file-saved': [windowId: number, tabId: string]
   'window-reload-by-id': [windowId: number]
   'window-toggle-always-on-top': [windowId: number]
+  // Claude Code integration
+  'mt::claude::terminal-input': [terminalId: string, data: string]
+  'mt::claude::terminal-kill': [terminalId: string]
 }
 
 // =================================================================
@@ -258,6 +264,9 @@ export interface IpcMainEventChannels {
   'mt::rg::error': [payload: unknown]
   'mt::rg::match': [payload: unknown]
   'mt::rg::progress': [payload: unknown]
+  // Claude Code integration
+  'mt::claude::terminal-output': [terminalId: string, data: string]
+  'mt::claude::terminal-exit': [terminalId: string, code: number]
   'mt::screenshot-captured': [filePath: string]
   'mt::set-line-ending': [lineEnding: LineEnding]
   'mt::set-pathname': [payload: { id: string; pathname: string; filename: string }]

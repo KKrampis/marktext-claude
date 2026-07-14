@@ -99,10 +99,22 @@
         >
           <strong>Error:</strong> {{ error }}
         </div>
-        <pre
+        <div
           v-else-if="result"
-          class="claude-panel__result"
-        >{{ result }}</pre>
+          class="claude-panel__result-wrapper"
+        >
+          <pre class="claude-panel__result">{{ result }}</pre>
+          <div class="claude-panel__result-actions">
+            <button
+              class="claude-panel__save-btn"
+              :disabled="isSaving"
+              :title="`Save to ${notesFileName}`"
+              @click="saveToReadme"
+            >
+              {{ saveStatus || `Save to ${notesFileName}` }}
+            </button>
+          </div>
+        </div>
         <div
           v-else
           class="claude-panel__empty"
@@ -229,6 +241,7 @@ const runExplain = async (): Promise<void> => {
   isLoading.value = true
   result.value = ''
   error.value = ''
+  saveStatus.value = ''
   try {
     const docContent = currentFile.value?.markdown ?? ''
     result.value = await window.claude.explain(selectedText.value, docContent)
@@ -236,6 +249,59 @@ const runExplain = async (): Promise<void> => {
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
     isLoading.value = false
+  }
+}
+
+// ── Save to README-build.md ──────────────────────────────────────
+const isSaving = ref(false)
+const saveStatus = ref('')
+
+const notesFileName = 'README-build.md'
+
+const notesFilePath = computed<string | null>(() => {
+  const pathname = currentFile.value?.pathname
+  if (!pathname) return null
+  return window.path.join(window.path.dirname(pathname), notesFileName)
+})
+
+const saveToReadme = async (): Promise<void> => {
+  const filePath = notesFilePath.value
+  if (!filePath || !result.value) return
+
+  isSaving.value = true
+  saveStatus.value = ''
+  try {
+    const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    const excerpt = selectedText.value.length > 80
+      ? selectedText.value.slice(0, 80) + '…'
+      : selectedText.value
+
+    const entry = [
+      `## ${timestamp}`,
+      '',
+      `> **Selected:** ${excerpt}`,
+      '',
+      result.value.trim(),
+      '',
+      '---',
+      ''
+    ].join('\n')
+
+    const exists = await window.fileUtils.pathExists(filePath)
+    if (exists) {
+      const current = await window.fileUtils.readFile(filePath) as string
+      await window.fileUtils.writeFile(filePath, current + '\n' + entry)
+    } else {
+      const header = `# Claude Explanations\n\nExplanations generated while reading \`${window.path.basename(currentFile.value?.pathname ?? '')}\`.\n\n---\n\n`
+      await window.fileUtils.writeFile(filePath, header + entry)
+    }
+
+    saveStatus.value = 'Saved!'
+    setTimeout(() => { saveStatus.value = '' }, 2500)
+  } catch (err) {
+    saveStatus.value = `Error: ${err instanceof Error ? err.message : String(err)}`
+  } finally {
+    isSaving.value = false
   }
 }
 
@@ -525,7 +591,44 @@ watch(
   line-height: 1.5;
 }
 
+.claude-panel__result-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.claude-panel__result-actions {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--itemBgColor, #333);
+}
+
+.claude-panel__save-btn {
+  width: 100%;
+  padding: 7px 14px;
+  border: 1px solid var(--itemBgColor, #444);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--editorColor, #cdd6f4);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: center;
+
+  &:hover:not(:disabled) {
+    border-color: var(--themeColor, #cba6f7);
+    color: var(--themeColor, #cba6f7);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
 .claude-panel__result {
+  flex: 1;
+  overflow: auto;
   padding: 12px;
   margin: 0;
   font-family: inherit;

@@ -546,6 +546,25 @@ watch(focus, (value) => {
   }
 })
 
+// In source-code mode the Paragraph and Format menus operate on the hidden
+// WYSIWYG engine, so grey them out. On return to WYSIWYG, re-apply the menu
+// state for the CURRENT cursor context (a code block/table still disables some
+// items) rather than blanket-enabling everything (#3531).
+watch(sourceCode, (isSource) => {
+  const windowId = window.marktext?.env?.windowId ?? -1
+  if (isSource) {
+    window.electron.ipcRenderer.send('mt::set-editor-format-menus-enabled', windowId, false)
+    return
+  }
+  nextTick(() => {
+    if (selectionChange.value) {
+      pushSelectionMenuState(selectionChange.value as MuyaChange)
+    } else {
+      window.electron.ipcRenderer.send('mt::set-editor-format-menus-enabled', windowId, true)
+    }
+  })
+})
+
 watch(fontSize, (value, oldValue) => {
   if (value !== oldValue && editor.value) {
     editor.value.setOptions({ fontSize: value })
@@ -1308,7 +1327,7 @@ const handleExport = async (options: unknown) => {
           headerFooterStyled: headerFooterStyled as boolean | undefined,
           dir: props.textDirection
         })
-        printer!.renderMarkdown(html, true)
+        printer!.renderMarkdown(html, true, props.textDirection)
         editorStore.EXPORT({ type, pageOptions })
       } catch (err) {
         log.error('Failed to export document:', err)
@@ -1334,7 +1353,7 @@ const handleExport = async (options: unknown) => {
           headerFooterStyled: headerFooterStyled as boolean | undefined,
           dir: props.textDirection
         })
-        printer!.renderMarkdown(html, true)
+        printer!.renderMarkdown(html, true, props.textDirection)
         editorStore.PRINT_RESPONSE()
       } catch (err) {
         log.error('Failed to export document:', err)
@@ -1371,6 +1390,12 @@ const pushSelectionMenuState = (changes: MuyaChange) => {
 }
 
 const handleEditParagraph = (type: unknown) => {
+  // These commands act on the hidden WYSIWYG engine, so block them in
+  // source-code mode (mirrors handleUndo/handleSelectAll) — otherwise e.g. the
+  // Insert Table wizard opens and writes to the invisible editor (#3531).
+  if (sourceCode.value) {
+    return
+  }
   if (type === 'table') {
     tableChecker.rows = 4
     tableChecker.columns = 3
@@ -1391,6 +1416,9 @@ const handleEditParagraph = (type: unknown) => {
 
 // handle `duplicate`, `delete`, `create paragraph below`
 const handleParagraph = (type: unknown) => {
+  if (sourceCode.value) {
+    return
+  }
   if (editor.value) {
     switch (type) {
       case 'duplicate': {
@@ -1409,6 +1437,9 @@ const handleParagraph = (type: unknown) => {
 }
 
 const handleInlineFormat = (type: unknown) => {
+  if (sourceCode.value) {
+    return
+  }
   editor.value && editor.value.format(type)
 }
 

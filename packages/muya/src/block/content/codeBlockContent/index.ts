@@ -9,7 +9,7 @@ import type {
 import type Code from '../../commonMark/codeBlock/code';
 import type HTMLPreview from '../../commonMark/html/htmlPreview';
 import { HTML_TAGS, VOID_HTML_TAGS } from '../../../config';
-import { adjustOffset, escapeHTML } from '../../../utils';
+import { adjustOffset, escapeHTML, firstWordOfInfo } from '../../../utils';
 import { computeLineCount, repositionLineNumberSpans, syncLineNumbersSpans } from '../../../utils/codeBlockLineNumbers';
 import { getHighlightHtml, MARKER_HASH } from '../../../utils/highlightHTML';
 import prism, { loadedLanguages, transformAliasToOrigin, walkTokens } from '../../../utils/prism/index';
@@ -97,10 +97,15 @@ class CodeBlockContent extends Content {
         return content;
     }
 
+    // The language word for highlighting / tokenizing — the first word of the
+    // code container's info string (which may carry attributes, e.g.
+    // `js title="x"`). Every consumer of `_lang` wants the language, never the
+    // full info string (that is read from `meta.lang` directly by the language
+    // input), so derive it once here.
     private get _lang() {
         const { _codeContainer: codeContainer } = this;
 
-        return codeContainer ? codeContainer.lang : this._initialLang;
+        return firstWordOfInfo(codeContainer ? codeContainer.lang : this._initialLang);
     }
 
     /**
@@ -417,7 +422,7 @@ class CodeBlockContent extends Content {
             // transform alias to original language
             const fullLengthLang = transformAliasToOrigin([lang])[0];
             if (fullLengthLang && /\S/.test(text) && loadedLanguages.has(fullLengthLang)) {
-                const tokens = prism.tokenize(text, prism.languages[lang]);
+                const tokens = prism.tokenize(text, prism.languages[fullLengthLang]);
                 let offset = start.offset;
                 let code = '';
                 let needRender = false;

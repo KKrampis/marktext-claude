@@ -197,11 +197,14 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useLayoutStore } from '@/store/layout'
 import { useEditorStore } from '@/store/editor'
+import { useProjectStore } from '@/store/project'
 import { storeToRefs } from 'pinia'
 
 const layoutStore = useLayoutStore()
 const editorStore = useEditorStore()
+const projectStore = useProjectStore()
 const { currentFile } = storeToRefs(editorStore)
+const { projectTree } = storeToRefs(projectStore)
 
 const activeTab = ref<'explain' | 'terminal'>('explain')
 
@@ -259,9 +262,11 @@ const saveStatus = ref('')
 const notesFileName = 'README-build.md'
 
 const notesFilePath = computed<string | null>(() => {
-  const pathname = currentFile.value?.pathname
-  if (!pathname) return null
-  return window.path.join(window.path.dirname(pathname), notesFileName)
+  // Prefer the open project root; fall back to the document's own directory.
+  const rootDir = projectTree.value?.pathname
+    ?? (currentFile.value?.pathname ? window.path.dirname(currentFile.value.pathname) : null)
+  if (!rootDir) return null
+  return window.path.join(rootDir, notesFileName)
 })
 
 const saveToReadme = async (): Promise<void> => {

@@ -197,10 +197,12 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useLayoutStore } from '@/store/layout'
 import { useEditorStore } from '@/store/editor'
+import { useProjectStore } from '@/store/project'
 import { storeToRefs } from 'pinia'
 
 const layoutStore = useLayoutStore()
 const editorStore = useEditorStore()
+const projectStore = useProjectStore()
 const { currentFile } = storeToRefs(editorStore)
 
 const activeTab = ref<'explain' | 'terminal'>('explain')
@@ -258,15 +260,36 @@ const saveStatus = ref('')
 
 const notesFileName = 'README-build.md'
 
-const notesFilePath = computed<string | null>(() => {
-  const pathname = currentFile.value?.pathname
-  if (!pathname) return null
-  return window.path.join(window.path.dirname(pathname), notesFileName)
-})
+// Walk up from `dir` until a directory containing README.md or .git is found.
+const findRepoRoot = async (dir: string): Promise<string> => {
+  let current = dir
+  while (true) {
+    const hasReadme = await window.fileUtils.pathExists(window.path.join(current, 'README.md'))
+    const hasGit = await window.fileUtils.pathExists(window.path.join(current, '.git'))
+    if (hasReadme || hasGit) return current
+    const parent = window.path.dirname(current)
+    if (parent === current) return dir  // reached fs root, give up
+    current = parent
+  }
+}
+
+const notesFilePath = ref<string | null>(null)
+
+watch(
+  () => currentFile.value?.pathname,
+  async (pathname) => {
+    if (!pathname) { notesFilePath.value = null; return }
+    const dir = window.path.dirname(pathname)
+    const root = await findRepoRoot(dir)
+    notesFilePath.value = window.path.join(root, notesFileName)
+  },
+  { immediate: true }
+)
 
 const saveToReadme = async (): Promise<void> => {
   const filePath = notesFilePath.value
   if (!filePath || !result.value) return
+
 
   isSaving.value = true
   saveStatus.value = ''

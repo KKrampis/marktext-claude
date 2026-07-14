@@ -204,7 +204,6 @@ const layoutStore = useLayoutStore()
 const editorStore = useEditorStore()
 const projectStore = useProjectStore()
 const { currentFile } = storeToRefs(editorStore)
-const { projectTree } = storeToRefs(projectStore)
 
 const activeTab = ref<'explain' | 'terminal'>('explain')
 
@@ -261,17 +260,36 @@ const saveStatus = ref('')
 
 const notesFileName = 'README-build.md'
 
-const notesFilePath = computed<string | null>(() => {
-  // Prefer the open project root; fall back to the document's own directory.
-  const rootDir = projectTree.value?.pathname
-    ?? (currentFile.value?.pathname ? window.path.dirname(currentFile.value.pathname) : null)
-  if (!rootDir) return null
-  return window.path.join(rootDir, notesFileName)
-})
+// Walk up from `dir` until a directory containing README.md or .git is found.
+const findRepoRoot = async (dir: string): Promise<string> => {
+  let current = dir
+  while (true) {
+    const hasReadme = await window.fileUtils.pathExists(window.path.join(current, 'README.md'))
+    const hasGit = await window.fileUtils.pathExists(window.path.join(current, '.git'))
+    if (hasReadme || hasGit) return current
+    const parent = window.path.dirname(current)
+    if (parent === current) return dir  // reached fs root, give up
+    current = parent
+  }
+}
+
+const notesFilePath = ref<string | null>(null)
+
+watch(
+  () => currentFile.value?.pathname,
+  async (pathname) => {
+    if (!pathname) { notesFilePath.value = null; return }
+    const dir = window.path.dirname(pathname)
+    const root = await findRepoRoot(dir)
+    notesFilePath.value = window.path.join(root, notesFileName)
+  },
+  { immediate: true }
+)
 
 const saveToReadme = async (): Promise<void> => {
   const filePath = notesFilePath.value
   if (!filePath || !result.value) return
+
 
   isSaving.value = true
   saveStatus.value = ''

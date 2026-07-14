@@ -2,7 +2,8 @@ import {
   Folder as FilesIcon,
   Search as SearchIcon,
   Memo as TocIcon,
-  Setting as SettingIcon
+  Setting as SettingIcon,
+  ChatDotRound as ClaudeIcon
 } from '@element-plus/icons-vue'
 import { t } from '@/i18n'
 
@@ -31,6 +32,11 @@ export const sideBarIcons: SideBarIconEntry[] = [
 ]
 
 export const sideBarBottomIcons: SideBarIconEntry[] = [
+  {
+    id: 'claude',
+    name: () => 'Claude',
+    icon: ClaudeIcon
+  },
   {
     id: 'settings',
     name: () => t('sideBar.icons.settings'),

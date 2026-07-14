@@ -34,6 +34,8 @@
       <rename />
       <import-modal />
     </div>
+
+    <claude-panel v-if="showClaudePanel" />
   </div>
 </template>
 
@@ -51,6 +53,7 @@ import CommandPalette from '@/components/commandPalette/index.vue'
 import ExportSettingDialog from '@/components/exportSettings/index.vue'
 import Rename from '@/components/rename/index.vue'
 import ImportModal from '@/components/import/index.vue'
+import ClaudePanel from '@/components/claudePanel/index.vue'
 import bus from '@/bus'
 import { DEFAULT_STYLE } from '@/config'
 import { useLayoutStore } from '@/store/layout'
@@ -75,7 +78,7 @@ const notificationStore = useNotificationStore()
 const timer = ref<ReturnType<typeof setTimeout> | null>(null)
 
 const { windowActive, platform, init } = storeToRefs(mainStore)
-const { showTabBar } = storeToRefs(layoutStore)
+const { showTabBar, showClaudePanel } = storeToRefs(layoutStore)
 const { sourceCode, theme, customCss, textDirection, zoom } = storeToRefs(preferencesStore)
 const { projectTree } = storeToRefs(projectStore)
 const { currentFile } = storeToRefs(editorStore)
@@ -118,6 +121,17 @@ watch(customCss, (value, oldValue) => {
 watch(zoom, (zoomValue) => {
   bus.emit('mt::window-zoom', zoomValue)
 })
+
+const setupClaudeShortcut = (): void => {
+  const isMac = window.electron.process.platform === 'darwin'
+  window.addEventListener('keydown', (e: KeyboardEvent) => {
+    const mod = isMac ? e.metaKey : e.ctrlKey
+    if (mod && e.shiftKey && e.key === 'E') {
+      e.preventDefault()
+      layoutStore.TOGGLE_CLAUDE_PANEL()
+    }
+  })
+}
 
 const setupDragDropHandler = (): void => {
   window.addEventListener(
@@ -201,6 +215,7 @@ onMounted(async () => {
   notificationStore.listenForNotification()
 
   setupDragDropHandler()
+  setupClaudeShortcut()
 
   nextTick(() => {
     // `initialState` from bootstrap carries nullable URL params (string|null);

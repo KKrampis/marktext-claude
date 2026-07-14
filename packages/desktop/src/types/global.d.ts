@@ -165,6 +165,15 @@ declare global {
     list(): Promise<string[]>
   }
 
+  interface ClaudeAPI {
+    explain(selectedText: string, docContent: string): Promise<string>
+    startTerminal(terminalId: string): Promise<void>
+    sendInput(terminalId: string, data: string): void
+    killTerminal(terminalId: string): void
+    onOutput(handler: (terminalId: string, data: string) => void): () => void
+    onExit(handler: (terminalId: string, code: number) => void): () => void
+  }
+
   interface ProcessShim {
     platform: NodeJS.Platform
     arch?: string
@@ -184,6 +193,7 @@ declare global {
     ripgrep: RipgrepAPI
     uploader: UploaderAPI
     fonts: FontsAPI
+    claude: ClaudeAPI
     process: ProcessShim
     rgPath: string
     // Set by the legacy editor store at runtime; consumed by muya internals.
